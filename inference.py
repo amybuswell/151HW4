@@ -74,10 +74,11 @@ class DiscreteDistribution(dict):
         >>> empty
         {}
         """
-        sum = self.total()
-        for key in self.keys():
-            self[key] = self[key] / sum
 
+        sum = self.total()
+        if (sum != 0):
+            for key in self.keys():
+                self[key] = self[key] / sum
 
     def sample(self):
         """
@@ -186,7 +187,7 @@ class InferenceModule:
 
         if (ghostPosition == jailPosition):
             return 0
-            
+
         trueDist = manhattanDistance(pacmanPosition, ghostPosition)
         prob = busters.getObservationProbability(noisyDistance, trueDist)
         return(prob)
@@ -255,6 +256,7 @@ class InferenceModule:
         """
         raise NotImplementedError
 
+
     def elapseTime(self, gameState):
         """
         Predict beliefs for the next time step from a gameState.
@@ -299,8 +301,16 @@ class ExactInference(InferenceModule):
         current position. However, this is not a problem, as Pacman's current
         position is known.
         """
-        "*** YOUR CODE HERE ***"
+        #set pacman and jail variables
+        pacman = gameState.getPacmanPosition()
+        jail = self.getJailPosition()
+        #reweight belief for each position
+        for p in self.allPositions:
+            x = self.getObservationProb(observation, pacman, p, jail)
+            self.beliefs[p] = self.beliefs[p] * x
+        #normalize
         self.beliefs.normalize()
+
 
     def elapseTime(self, gameState):
         """
@@ -311,7 +321,16 @@ class ExactInference(InferenceModule):
         Pacman's current position. However, this is not a problem, as Pacman's
         current position is known.
         """
-        "*** YOUR CODE HERE ***"
+        new = self.beliefs.copy()
+        for key in new.keys():
+            new[key] = 0
+        for p in self.allPositions:
+            posDis = self.getPositionDistribution(gameState, p)
+            for newPos in self.allPositions:
+                new[newPos] = new[newPos] + (self.beliefs[p] * posDis[newPos])
+
+        new.normalize()
+        self.beliefs = new
 
     def getBeliefDistribution(self):
         return self.beliefs
@@ -351,7 +370,6 @@ class ParticleFilter(InferenceModule):
         be reinitialized by calling initializeUniformly. The total method of
         the DiscreteDistribution may be useful.
         """
-        "*** YOUR CODE HERE ***"
 
     def elapseTime(self, gameState):
         """
@@ -410,8 +428,8 @@ class JointParticleFilter(ParticleFilter):
         Resample the set of particles using the likelihood of the noisy
         observations.
         """
-        observation = gameState.getNoisyGhostDistances()
-        self.observeUpdate(observation, gameState)
+        #observation = gameState.getNoisyGhostDistances()
+        #self.observeUpdate(observation, gameState)
 
     def observeUpdate(self, observation, gameState):
         """
