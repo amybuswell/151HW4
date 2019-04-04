@@ -381,27 +381,41 @@ class ParticleFilter(InferenceModule):
         #self.particles where the weight of a particle is the probability of the
         #observation given Pacman's position and that particle location.
 
-        odds = DiscreteDistribution()
-        for part in self.particles:
-            odds[part] = self.getObservationProb(observation, gameState.getPacmanPosition(), part, self.getJailPosition())
+        probs = DiscreteDistribution()
+        pacman = gameState.getPacmanPosition()
+        for i in range(0, len(self.particles)):
+            part = self.particles[i]
+            probs[part] = probs[part] + self.getObservationProb(observation, pacman, self.particles[i], self.getJailPosition())
 
-        odds.normalize()
-        if (odds.total() == 0):
+        #print ("odds before normalise", odds)
+        probs.normalize()
+        if (probs.total() == 0):
+            print "0"
             self.initializeUniformly(gameState)
-
         #Then, we resample from this weighted distribution to construct
         #our new list of particles.
 
-        parts = []
-        for i in range(0, self.numParticles):
-            parts.append(odds.sample())
+        parts = [probs.sample() for _ in range(self.numParticles)]
+
+        self.particles = parts
 
     def elapseTime(self, gameState):
         """
         Sample each particle's next state based on its current state and the
         gameState.
         """
-        "*** YOUR CODE HERE ***"
+
+        new = []#self.particles.copy()
+        #for key in new.keys():
+            #new[key] = 0
+        for p in self.particles:
+            posDis = self.getPositionDistribution(gameState, p)
+            new.append(posDis.argMax())
+            #for newPos in self.allPositions:
+                #new[newPos] = new[newPos] + (self.beliefs[p] * posDis[newPos])
+
+        #new.normalize()
+        self.particles = new
 
     def getBeliefDistribution(self):
         """
@@ -445,7 +459,17 @@ class JointParticleFilter(ParticleFilter):
         uniform prior.
         """
         self.particles = []
-        "*** YOUR CODE HERE ***"
+        possible = self.legalPositions
+        num = self.numParticles
+
+        combo = list(itertools.product(possible, repeat=2))
+        random.shuffle(combo)
+        index = 0
+        for i in range(0, num):
+            if (index >= (len(combo))):
+                index = 0
+            self.particles.append(combo[index])
+            index = index + 1
 
     def addGhostAgent(self, agent):
         """
