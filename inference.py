@@ -16,6 +16,7 @@ import itertools
 import random
 import busters
 import game
+from collections import Counter
 
 from util import manhattanDistance
 
@@ -270,7 +271,6 @@ class InferenceModule:
         """
         raise NotImplementedError
 
-
 class ExactInference(InferenceModule):
     """
     The exact dynamic inference module should use forward algorithm updates to
@@ -335,7 +335,6 @@ class ExactInference(InferenceModule):
     def getBeliefDistribution(self):
         return self.beliefs
 
-
 class ParticleFilter(InferenceModule):
     """
     A particle filter for approximately tracking a single ghost.
@@ -356,7 +355,15 @@ class ParticleFilter(InferenceModule):
         self.particles for the list of particles.
         """
         self.particles = []
-        "*** YOUR CODE HERE ***"
+        possible = self.legalPositions
+        num = self.numParticles
+
+        index = 0
+        for i in range(0, num):
+            if (index >= (len(possible))):
+                index = 0
+            self.particles.append(possible[index])
+            index = index + 1
 
     def observeUpdate(self, observation, gameState):
         """
@@ -370,6 +377,24 @@ class ParticleFilter(InferenceModule):
         be reinitialized by calling initializeUniformly. The total method of
         the DiscreteDistribution may be useful.
         """
+        #This method constructs a weight distribution over
+        #self.particles where the weight of a particle is the probability of the
+        #observation given Pacman's position and that particle location.
+
+        odds = DiscreteDistribution()
+        for part in self.particles:
+            odds[part] = self.getObservationProb(observation, gameState.getPacmanPosition(), part, self.getJailPosition())
+
+        odds.normalize()
+        if (odds.total() == 0):
+            self.initializeUniformly(gameState)
+
+        #Then, we resample from this weighted distribution to construct
+        #our new list of particles.
+
+        parts = []
+        for i in range(0, self.numParticles):
+            parts.append(odds.sample())
 
     def elapseTime(self, gameState):
         """
@@ -384,7 +409,16 @@ class ParticleFilter(InferenceModule):
         locations conditioned on all evidence and time passage. This method
         essentially converts a list of particles into a belief distribution.
         """
-        "*** YOUR CODE HERE ***"
+        beliefDis = DiscreteDistribution()
+        count = Counter(self.particles)
+        for pos in self.legalPositions:
+            beliefDis[pos] = count[pos]
+
+        beliefDis.normalize()
+
+        return beliefDis
+
+
 
 
 class JointParticleFilter(ParticleFilter):
