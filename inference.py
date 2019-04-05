@@ -383,8 +383,15 @@ class ParticleFilter(InferenceModule):
 
         probs = DiscreteDistribution()
         pacman = gameState.getPacmanPosition()
+        # if type(self.particles) is not list:
+        #     print "\n \n \n" + self.particles + "\n \n \n"
         for i in range(0, len(self.particles)):
             part = self.particles[i]
+            # print("part", part)
+            # print("probs[part]", probs[part])
+            # print "obvs", observation
+            # print "pacman", pacman
+            # print "jail", self.getJailPosition()
             probs[part] = probs[part] + self.getObservationProb(observation, pacman, self.particles[i], self.getJailPosition())
 
         #print ("odds before normalise", odds)
@@ -392,12 +399,18 @@ class ParticleFilter(InferenceModule):
         if (probs.total() == 0):
             print "0"
             self.initializeUniformly(gameState)
+            probs = self.getBeliefDistribution()
+            #print self.particles
+            parts = [probs.sample() for _ in range(self.numParticles)]
+            self.particles = parts
+            return
         #Then, we resample from this weighted distribution to construct
         #our new list of particles.
 
         parts = [probs.sample() for _ in range(self.numParticles)]
 
         self.particles = parts
+
 
     def elapseTime(self, gameState):
         """
@@ -410,7 +423,7 @@ class ParticleFilter(InferenceModule):
             #new[key] = 0
         for p in self.particles:
             posDis = self.getPositionDistribution(gameState, p)
-            new.append(posDis.argMax())
+            new.append(posDis.sample())
             #for newPos in self.allPositions:
                 #new[newPos] = new[newPos] + (self.beliefs[p] * posDis[newPos])
 
@@ -458,18 +471,22 @@ class JointParticleFilter(ParticleFilter):
         should be evenly distributed across positions in order to ensure a
         uniform prior.
         """
-        self.particles = []
+        particles = []
         possible = self.legalPositions
         num = self.numParticles
 
-        combo = list(itertools.product(possible, repeat=2))
+        combo = list(itertools.product(possible, repeat = self.numGhosts))
+        print combo
         random.shuffle(combo)
         index = 0
         for i in range(0, num):
             if (index >= (len(combo))):
                 index = 0
-            self.particles.append(combo[index])
+            particles.append(combo[index])
             index = index + 1
+        self.particles = particles
+        #print self.particles
+
 
     def addGhostAgent(self, agent):
         """
