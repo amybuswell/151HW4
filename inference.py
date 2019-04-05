@@ -387,14 +387,8 @@ class ParticleFilter(InferenceModule):
         #     print "\n \n \n" + self.particles + "\n \n \n"
         for i in range(0, len(self.particles)):
             part = self.particles[i]
-            # print("part", part)
-            # print("probs[part]", probs[part])
-            # print "obvs", observation
-            # print "pacman", pacman
-            # print "jail", self.getJailPosition()
             probs[part] = probs[part] + self.getObservationProb(observation, pacman, self.particles[i], self.getJailPosition())
 
-        #print ("odds before normalise", odds)
         probs.normalize()
         if (probs.total() == 0):
             print "0"
@@ -438,14 +432,12 @@ class ParticleFilter(InferenceModule):
         """
         beliefDis = DiscreteDistribution()
         count = Counter(self.particles)
-        for pos in self.legalPositions:
+        for pos in self.particles:
             beliefDis[pos] = count[pos]
 
         beliefDis.normalize()
 
         return beliefDis
-
-
 
 
 class JointParticleFilter(ParticleFilter):
@@ -471,22 +463,21 @@ class JointParticleFilter(ParticleFilter):
         should be evenly distributed across positions in order to ensure a
         uniform prior.
         """
+        print "initialize happened"
         particles = []
         possible = self.legalPositions
         num = self.numParticles
 
         combo = list(itertools.product(possible, repeat = self.numGhosts))
-        print combo
         random.shuffle(combo)
         index = 0
         for i in range(0, num):
             if (index >= (len(combo))):
                 index = 0
-            particles.append(combo[index])
+            new = combo[index]
+            particles.append(new)
             index = index + 1
         self.particles = particles
-        #print self.particles
-
 
     def addGhostAgent(self, agent):
         """
@@ -518,7 +509,27 @@ class JointParticleFilter(ParticleFilter):
         be reinitialized by calling initializeUniformly. The total method of
         the DiscreteDistribution may be useful.
         """
-        "*** YOUR CODE HERE ***"
+        print "got em"
+        probs = DiscreteDistribution()
+        pacman = gameState.getPacmanPosition()
+
+        for x in range(self.numGhosts):
+            for i in range(0, len(self.particles)):
+                part = self.particles[i]
+                print part
+                probs[part] = probs[part] + self.getObservationProb(observation, pacman, part, self.getJailPosition(i))
+
+        probs.normalize()
+
+        if (probs.total() == 0):
+            print "initialize happened"
+            self.initializeUniformly(gameState)
+            probs = self.getBeliefDistribution()
+
+        #Then, we resample from this weighted distribution to construct
+        #our new list of particles.
+        parts = [probs.sample() for _ in range(self.numParticles)]
+        self.particles = parts
 
     def elapseTime(self, gameState):
         """
