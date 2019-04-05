@@ -463,7 +463,6 @@ class JointParticleFilter(ParticleFilter):
         should be evenly distributed across positions in order to ensure a
         uniform prior.
         """
-        print "initialize happened"
         particles = []
         possible = self.legalPositions
         num = self.numParticles
@@ -494,8 +493,8 @@ class JointParticleFilter(ParticleFilter):
         Resample the set of particles using the likelihood of the noisy
         observations.
         """
-        #observation = gameState.getNoisyGhostDistances()
-        #self.observeUpdate(observation, gameState)
+        observation = gameState.getNoisyGhostDistances()
+        self.observeUpdate(observation, gameState)
 
     def observeUpdate(self, observation, gameState):
         """
@@ -509,15 +508,22 @@ class JointParticleFilter(ParticleFilter):
         be reinitialized by calling initializeUniformly. The total method of
         the DiscreteDistribution may be useful.
         """
-        print "got em"
+        #create a distribution and a local variable for pacman's location
         probs = DiscreteDistribution()
+        bel = self.getBeliefDistribution()
         pacman = gameState.getPacmanPosition()
 
-        for x in range(self.numGhosts):
-            for i in range(0, len(self.particles)):
-                part = self.particles[i]
-                print part
-                probs[part] = probs[part] + self.getObservationProb(observation, pacman, part, self.getJailPosition(i))
+        #loop through every  particle in self.particles
+        for part in self.particles:
+            #loop through the ghosts
+            multProbs = 1
+            for x in range(self.numGhosts):
+                #local variables for observation and jail
+                ob = observation[x]
+                jail = self.getJailPosition(x)
+                #add the probability of that particle for that ghost to the probs of particle
+                multProbs = multProbs * self.getObservationProb(ob, pacman, part[x], jail)
+            probs[part] = (multProbs * bel[part])
 
         probs.normalize()
 
@@ -526,8 +532,7 @@ class JointParticleFilter(ParticleFilter):
             self.initializeUniformly(gameState)
             probs = self.getBeliefDistribution()
 
-        #Then, we resample from this weighted distribution to construct
-        #our new list of particles.
+        #resample from weighted distribution to construct a new list of particles.
         parts = [probs.sample() for _ in range(self.numParticles)]
         self.particles = parts
 
@@ -540,13 +545,15 @@ class JointParticleFilter(ParticleFilter):
         for oldParticle in self.particles:
             newParticle = list(oldParticle)  # A list of ghost positions
 
-            # now loop through and update each entry in newParticle...
-            "*** YOUR CODE HERE ***"
+            # OUR CODE now loop through and update each entry in newParticle...
+            for i in range(self.numGhosts):
+                newPostDist = self.getPositionDistribution(gameState, list(oldParticle), i, self.ghostAgents[i])
+                newParticle[i] = newPostDist.sample()
 
-            """*** END YOUR CODE HERE ***"""
+            #his code
             newParticles.append(tuple(newParticle))
-        self.particles = newParticles
 
+        self.particles = newParticles
 
 # One JointInference module is shared globally across instances of MarginalInference
 jointInference = JointParticleFilter()
